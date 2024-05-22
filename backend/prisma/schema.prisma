@@ -1,0 +1,55 @@
+ 
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Task{
+  title    String   @default("Select the most clickable thumbmnail")
+  id       Int      @id @default(autoincrement())
+  options Option[]
+  payment String
+  amount String
+  user_id Int
+  user    User     @relation(fields: [user_id], references: [id])
+  subsmissions Submission[]
+}
+
+model Option{
+  id       Int      @id @default(autoincrement())
+  image_url String
+  option_id Int
+  task_id Int 
+  task Task @relation(fields: [task_id], references: [id])
+  submissions Submission[]
+}
+
+model User{  
+  id        Int      @id @default(autoincrement())
+  address   String   @unique
+  task     Task[]
+}
+
+model Worker{
+  id        Int      @id @default(autoincrement())
+  address   String   @unique
+  submissions Submission[]
+  pending_amount String
+  locked_amount String
+}
+
+model Submission{
+  id       Int      @id @default(autoincrement())
+  worker_id Int
+  worker Worker @relation(fields: [worker_id], references: [id])
+  option_id Int
+  option Option @relation(fields: [option_id], references: [id])
+  task_id Int
+  task Task @relation(fields: [task_id], references: [id])
+  amount String
+}
