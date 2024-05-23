@@ -14,7 +14,8 @@ model Task{
   id       Int      @id @default(autoincrement())
   options Option[]
   payment String
-  amount String
+  amount Int
+  reviewers Int 
   user_id Int
   user    User     @relation(fields: [user_id], references: [id])
   subsmissions Submission[]
@@ -31,7 +32,7 @@ model Option{
 
 model User{  
   id        Int      @id @default(autoincrement())
-  address   String   @unique
+  address   String   @unique     
   task     Task[]
 }
 
@@ -39,8 +40,8 @@ model Worker{
   id        Int      @id @default(autoincrement())
   address   String   @unique
   submissions Submission[]
-  pending_amount String
-  locked_amount String
+  pending_amount Int
+  locked_amount Int
 }
 
 model Submission{
@@ -51,5 +52,4 @@ model Submission{
   option Option @relation(fields: [option_id], references: [id])
   task_id Int
   task Task @relation(fields: [task_id], references: [id])
-  amount String
 }
