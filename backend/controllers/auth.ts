@@ -2,13 +2,14 @@ import {prisma} from '../config/prismaClient';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import {z} from 'zod';
+import {Request , Response} from 'express';
 
 dotenv.config();
 
-export const workerSignin = async(req , res)=>{
+export const workerSignin = async(req:Request , res:Response)=>{
     try{
         const addressSchema = z.string();
-        const hardWalletAddress = addressSchema.parse("9A6ZjfpuKVgvySvUyW2T6ofTwQt6iSfto5e4bNiAC23B");
+        const hardWalletAddress = addressSchema.parse(req.body.publicKey);
         const existingUser = await prisma.worker.findFirst({
             where:{
                 address: hardWalletAddress,
@@ -16,19 +17,26 @@ export const workerSignin = async(req , res)=>{
         });
 
         if(existingUser){
-            const token = jwt.sign({userId: existingUser.id} , process.env.JWT_SECRET);
+            const secret = process.env.JWT_SECRET;
+            let token;
+            if(secret !== undefined)
+                token = jwt.sign({userId: existingUser.id} , secret);
             res.json({token});
         }
         else{
             const newUser = await prisma.worker.create({
                 data:{
                     address: hardWalletAddress,
-                    pending_amount: "0",
-                    locked_amount: "0",
+                    pending_amount: 0,
+                    locked_amount: 0,
                 }
             });
-            const token = jwt.sign({userId: newUser.id} , process.env.JWT_SECRET);
-            req.json({token});
+
+            const secret = process.env.JWT_SECRET;
+            let token;
+            if(secret !== undefined)
+                token = jwt.sign({userId: newUser.id} , secret);
+            res.json({token});
         }
         
     } catch{
@@ -39,10 +47,10 @@ export const workerSignin = async(req , res)=>{
     }
 }
 
-export const userSignin = async(req , res)=>{
+export const userSignin = async(req:Request , res:Response)=>{
     try{
         const addressSchema = z.string();
-        const hardWalletAddress = addressSchema.parse("9A6ZjfpuKVgvySvUyW2T6ofTwQt6iSfto5e4bNiAC23B");
+        const hardWalletAddress = addressSchema.parse(req.body.publicKey);
         const existingUser = await prisma.user.findFirst({
             where:{
                 address: hardWalletAddress,
@@ -50,7 +58,10 @@ export const userSignin = async(req , res)=>{
         });
 
         if(existingUser){
-            const token = jwt.sign({userId: existingUser.id} , process.env.JWT_SECRET);
+            const secret = process.env.JWT_SECRET;
+            let token;
+            if(secret !== undefined)
+                token = jwt.sign({userId: existingUser.id} , secret);
             res.json({token});
         }
         else{
@@ -59,14 +70,18 @@ export const userSignin = async(req , res)=>{
                     address: hardWalletAddress,
                 }
             });
-            const token = jwt.sign({userId: newUser.id} , process.env.JWT_SECRET);
-            req.json({token});
+            const secret = process.env.JWT_SECRET;
+            let token;
+            if(secret !== undefined)
+                token = jwt.sign({userId: newUser.id} , secret);
+            res.json({token});
         }
         
-    } catch{
+    } catch(error){
         res.status(500).json({
             message: "Something went wrong",
-            success: false
+            success: false,
+            error: (error as Error).message,
         })
     }
 }

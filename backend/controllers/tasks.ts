@@ -3,24 +3,46 @@ import {z} from 'zod';
 import { uploadImageToCloudinary } from '../utils/imageUploader';
 import dotenv from 'dotenv';
 dotenv.config();
+import {Request , Response} from 'express';
+
+interface RequestWithUser extends Request {
+    user?: any;
+    files?: any;
+}
 
 //we will give 0.1 sol to each reviewer 
 
-export const createTask = async(req , res)=>{
+export const createTask = async(req:RequestWithUser, res: Response)=>{
     try{
         //zod validation
         const taskSchema = z.object({
             title: z.string().optional(),
             payment: z.string(),
-            amount: z.number(),
+            amount: z.string(),
         });
 
-        const imagesSchema = z.array(z.string());
-
         const {title , payment  , amount } = taskSchema.parse(req.body);
-        const images = imagesSchema.parse(req.files.taskImage);
+        
+        const images = req.files;
+        const imagesArray: string[] = [];
+        
+        
 
-        const userId = req.user.id;
+        if(!images){
+            return res.status(400).json({
+                message: "Please provide images",
+                success: false
+            });
+        }    
+
+        if(images.length < 2){
+            return res.status(400).json({
+                message: "Please provide atleast 2 images",
+                success: false
+            });
+        }
+
+        const userId = req.user.userId;
 
         if(!title || !payment || !images){
             return res.status(400).json({
@@ -30,19 +52,22 @@ export const createTask = async(req , res)=>{
         }
 
         //upload image and get url
-        const imagePromises = images.map(async(image)=>{
-            const url = await uploadImageToCloudinary(image , process.env.FOLDER_NAME);
-            return url.secure_url;
-        })
 
-        const imageUrls = await Promise.all(imagePromises);
+        for (const key in req.files){
+            const image = req.files[key];
+            const url = await uploadImageToCloudinary(image, process.env.FOLDER_NAME);
+            imagesArray.push(url.secure_url);
+        }
 
+        const imageUrls = await Promise.all(imagesArray);
+
+        console.log(imageUrls);
         const task = await prisma.task.create({
             data:{
                 title: title !== undefined ? title : "Select the most clickable thumbmnail",
                 payment,
-                amount,
-                reviewers: amount/0.1,
+                amount: parseInt(amount),
+                reviewers: parseInt(amount)/0.1,
                 user:{
                     connect: {id: userId}
                 },
@@ -67,15 +92,16 @@ export const createTask = async(req , res)=>{
     } catch(error){
         res.status(500).json({
             message: "Something went wrong",
-            success: false
+            success: false,
+            error: (error as Error).message,
         });
     }
 }
 
-export const getTasks = async(req , res)=>{
+export const getTasks = async(req:RequestWithUser, res: Response)=>{
     try{
 
-        const userId = req.user.id;
+        const userId = req.user.userId;
 
         const tasks = await prisma.task.findMany({
             where:{
@@ -104,10 +130,10 @@ export const getTasks = async(req , res)=>{
     }
 }
 
-export const finishedTask = async(req , res)=>{
+export const finishedTask = async(req:RequestWithUser, res: Response)=>{
     try{
 
-        const userId = req.user.id;
+        const userId = req.user.userId;
 
         const tasks = await prisma.task.findMany({
             where:{
@@ -139,9 +165,9 @@ export const finishedTask = async(req , res)=>{
 }
 
 //we don't want same user to review again
-export const pendingTask = async(req , res)=>{
+export const pendingTask = async(req:RequestWithUser, res: Response)=>{
     try{
-        const userId = req.user.id;
+        const userId = req.user.userId;
         const tasks = await prisma.task.findMany({
             where:{
                 reviewers:{
@@ -178,7 +204,7 @@ export const pendingTask = async(req , res)=>{
     }
 }
 
-export const reviewTask = async(req , res)=>{
+export const reviewTask = async(req:RequestWithUser, res: Response)=>{
     try{
 
         const reviewSchema = z.object({
@@ -187,7 +213,7 @@ export const reviewTask = async(req , res)=>{
         });
 
         const {taskId , optionId} = reviewSchema.parse(req.body);
-        const userId = req.user.id;
+        const userId = req.user.userId;
 
         const task =  await prisma.task.update({
             where:{
@@ -241,7 +267,7 @@ export const reviewTask = async(req , res)=>{
 }
 
 //renew task reviewers increase acc to amount paid
-export const renewTask = async(req , res)=>{
+export const renewTask = async(req:RequestWithUser, res: Response)=>{
     try{
 
         const renewSchema = z.object({

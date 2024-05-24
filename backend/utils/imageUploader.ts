@@ -1,7 +1,7 @@
 import {v2 as cloudinary} from 'cloudinary';
 
-export const uploadImageToCloudinary = async(file , folder , height? , quality?)=>{
-    const options: { folder: string; height?: number; quality?: string; resource_type?: "image" | "video" | "raw" | "auto" } = { folder };
+export const uploadImageToCloudinary = async(file:any , folder:string|undefined , height?:number , quality?:string)=>{
+    const options: { folder: string | undefined; height?: number; quality?: string; resource_type?: "image" | "video" | "raw" | "auto" } = { folder };
     if(height){
         options.height = height;
     }
