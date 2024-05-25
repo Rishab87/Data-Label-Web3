@@ -84,6 +84,13 @@ export const createTask = async(req:RequestWithUser, res: Response)=>{
             }
         });
 
+        if(!task){
+            return res.status(400).json({
+                success: false,
+                message: "Task not created"
+            });
+        }
+
         return res.status(200).json({
             success: true , 
             data: task,
@@ -117,6 +124,13 @@ export const getTasks = async(req:RequestWithUser, res: Response)=>{
             }
         });
 
+        if(!tasks){
+            return res.status(400).json({
+                success: false,
+                message: "No tasks found"
+            });
+        }
+
         return res.status(200).json({
             success: true , 
             data: tasks,
@@ -149,6 +163,13 @@ export const finishedTask = async(req:RequestWithUser, res: Response)=>{
                 subsmissions:true,
             }
         });
+
+        if(!tasks){
+            return res.status(400).json({
+                success: false,
+                message: "No tasks found"
+            });
+        }
 
         return res.status(200).json({
             success: true , 
@@ -188,6 +209,13 @@ export const pendingTask = async(req:RequestWithUser, res: Response)=>{
                 subsmissions: true,
             },
         });
+
+        if(!tasks){
+            return res.status(400).json({
+                success: false,
+                message: "No tasks found"
+            });
+        }
 
         return res.status(200).json({
             success: true , 
@@ -250,6 +278,20 @@ export const reviewTask = async(req:RequestWithUser, res: Response)=>{
             }
         });
 
+        if(!task){
+            return res.status(400).json({
+                success: false,
+                message: "Task not found"
+            });
+        }
+
+        if(!updateWorker){
+            return res.status(400).json({
+                success: false,
+                message: "Worker not found"
+            });
+        }
+
         
         return res.status(200).json({
             success: true , 
@@ -289,6 +331,13 @@ export const decrementPendingAmount = async(req: RequestWithUser , res: Response
             }
         });
 
+        if(!worker){
+            return res.status(400).json({
+                success: false,
+                message: "Worker not found"
+            });
+        }
+
         return res.status(200).json({
             success: true , 
             data: worker,
@@ -316,6 +365,13 @@ export const lockamount = async(req: RequestWithUser , res: Response)=>{
                 locked_amount: amount,
             }
         });
+
+        if(!worker){
+            return res.status(400).json({
+                success: false,
+                message: "Worker not found"
+            });
+        }
 
         return res.status(200).json({
             success: true , 
@@ -346,6 +402,13 @@ export const failedTransaction = async(req: RequestWithUser , res: Response)=>{
                 locked_amount: 0,
             }
         });
+
+        if(!worker){
+            return res.status(400).json({
+                success: false,
+                message: "Worker not found"
+            });
+        }
 
         return res.status(200).json({
             success: true , 
@@ -383,6 +446,13 @@ export const renewTask = async(req:RequestWithUser, res: Response)=>{
             },
                
         });
+
+        if(!task){
+            return res.status(400).json({
+                success: false,
+                message: "Task not found"
+            });
+        }
 
         return res.status(200).json({
             success: true , 
