@@ -21,7 +21,7 @@ export const workerSignin = async(req:Request , res:Response)=>{
             let token;
             if(secret !== undefined)
                 token = jwt.sign({userId: existingUser.id} , secret);
-            res.json({token});
+            res.json({token  , pending_amount: existingUser.pending_amount});
         }
         else{
             const newUser = await prisma.worker.create({
@@ -36,7 +36,7 @@ export const workerSignin = async(req:Request , res:Response)=>{
             let token;
             if(secret !== undefined)
                 token = jwt.sign({userId: newUser.id} , secret);
-            res.json({token});
+            res.json({token , pending_amount: newUser.pending_amount});
         }
         
     } catch{

@@ -40,8 +40,9 @@ model Worker{
   id        Int      @id @default(autoincrement())
   address   String   @unique
   submissions Submission[]
-  pending_amount Int
+  pending_amount Decimal
   locked_amount Int
+  //locked amount should be decimal
 }
 
 model Submission{

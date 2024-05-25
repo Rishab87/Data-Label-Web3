@@ -173,12 +173,10 @@ export const pendingTask = async(req:RequestWithUser, res: Response)=>{
                 reviewers:{
                     gt: 0
                 },
-                NOT:{
-                    subsmissions:{
-                        some:{
-                            id: userId
-                        }
-                    }
+                subsmissions:{
+                    none:{
+                        worker_id: userId,
+                    },
                 },
             },
             include:{
@@ -264,6 +262,103 @@ export const reviewTask = async(req:RequestWithUser, res: Response)=>{
             success: false
         });
     }
+}
+
+export const decrementPendingAmount = async(req: RequestWithUser , res: Response)=>{
+    try{
+        const userId = req.user.userId;
+        
+        const {amount} = req.body;
+
+        if(!amount){
+            return res.status(400).json({
+                success: false,
+                message: "Please provide amount"
+            });
+        }
+
+        const worker = await prisma.worker.update({
+            where:{
+                id: userId
+            },
+            data:{
+                pending_amount:{
+                    decrement: amount
+                },
+                locked_amount: 0 ,
+            }
+        });
+
+        return res.status(200).json({
+            success: true , 
+            data: worker,
+        })
+
+    } catch{
+        return res.status(500).json({
+            message: "Something went wrong",
+            success: false
+        })
+    }
+}
+
+export const lockamount = async(req: RequestWithUser , res: Response)=>{
+    try{
+        const userId = req.user.userId;
+        const {amount} = req.body;
+        
+        const worker = await prisma.worker.update({
+            where:{
+                id: userId
+            },
+            data:{
+                pending_amount: 0,
+                locked_amount: amount,
+            }
+        });
+
+        return res.status(200).json({
+            success: true , 
+            data: worker,
+        })
+
+    } catch(error){
+        return res.status(500).json({
+            message: "Something went wrong",
+            success: false,
+            error: (error as Error).message,
+        })
+    }
+
+}
+
+export const failedTransaction = async(req: RequestWithUser , res: Response)=>{
+    try{
+        const userId = req.user.userId;
+        const {amount} = req.body;
+        
+        const worker = await prisma.worker.update({
+            where:{
+                id: userId
+            },
+            data:{
+                pending_amount: amount,
+                locked_amount: 0,
+            }
+        });
+
+        return res.status(200).json({
+            success: true , 
+            data: worker,
+        })
+
+    } catch{
+        return res.status(500).json({
+            message: "Something went wrong",
+            success: false
+        })
+    }
+
 }
 
 //renew task reviewers increase acc to amount paid
