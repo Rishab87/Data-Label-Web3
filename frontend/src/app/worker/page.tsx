@@ -20,7 +20,7 @@ const page = () => {
     const [renderSteps , setRenderSteps] = React.useState<number>(0); 
     const [token , setToken] = React.useState<string | null>(null);
     const {publicKey , connected , connecting} = useWallet();
-    const [pendingAmount , setPendingAmount] = React.useState<number>(0);
+    const [pendingAmount , setPendingAmount] = React.useState<string>("0");
     const [locked  , setLocked] = React.useState<boolean>(false);
 
 
@@ -56,7 +56,7 @@ const page = () => {
 
   const submitResponse = async (optionId:number)=>{
     const task = await reviewTask(pendingTasks![renderSteps].id , optionId , token);
-    setPendingAmount(pendingAmount+ 0.1);
+    setPendingAmount(JSON.stringify(parseFloat(pendingAmount)+ 0.1));
     setRenderSteps(renderSteps+1);
   }
 
@@ -83,7 +83,7 @@ const page = () => {
           SystemProgram.transfer({
               fromPubkey: senderKeypair.publicKey,
               toPubkey: publicKey!,
-              lamports: pendingAmount * LAMPORTS_PER_SOL, // 
+              lamports: parseFloat(pendingAmount) * LAMPORTS_PER_SOL,  
           })
       );
   
@@ -107,9 +107,9 @@ const page = () => {
       throw new Error('Transaction failed');
     }
 
-      await decrementPendingAmount(pendingAmount , token);
+      await decrementPendingAmount(parseFloat(pendingAmount) , token);
       toast.success('Payment successful');length
-      setPendingAmount(0);
+      setPendingAmount("0");
       toast.dismiss(toastId);
       setLocked(false);
 

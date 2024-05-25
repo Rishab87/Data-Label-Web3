@@ -101,15 +101,13 @@ const page = () => {
                 setUserTasks(tasks);
                 console.log(tasks);
                 let temp:any = {}
-                useMemo(()=>{
-                    tasks.forEach((task:any)=>{
-                        task.subsmissions.forEach((submission:any)=>{
-                            temp[submission.option_id] = temp[submission.option_id] ? temp[submission.option_id] + 1 : 1;
-                            
-                        })
-                    })      
-                } , [votes]);
-                    
+                tasks.forEach((task:any)=>{
+                    task.subsmissions.forEach((submission:any)=>{
+                        temp[submission.option_id] = temp[submission.option_id] ? temp[submission.option_id] + 1 : 1;
+                        
+                    })
+                })     
+
                 setVotes(temp);
                 // console.log(votes);
                 
