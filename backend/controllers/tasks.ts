@@ -4,6 +4,9 @@ import { uploadImageToCloudinary } from '../utils/imageUploader';
 import dotenv from 'dotenv';
 dotenv.config();
 import {Request , Response} from 'express';
+import { PublicKey } from '@solana/web3.js';
+import bs58 from 'bs58';
+import nacl from 'tweetnacl';
 
 interface RequestWithUser extends Request {
     user?: any;
@@ -11,6 +14,27 @@ interface RequestWithUser extends Request {
 }
 
 //we will give 0.1 sol to each reviewer 
+
+const verifyPayment = (
+    publicKeyBase58: string,
+    amount: number,
+    signatureBase58: string
+): boolean => {
+    try {
+        // Decode public key and signature from base58
+        const publicKey = new PublicKey(publicKeyBase58);
+        const signature = bs58.decode(signatureBase58);
+
+        // Encode the payment data
+        const paymentData = new TextEncoder().encode(`${publicKey.toBase58()}${amount}`);
+
+        // Verify the signature
+        return nacl.sign.detached.verify(paymentData, signature, publicKey.toBytes());
+    } catch (error) {
+        console.error('Error verifying payment:', error);
+        return false;
+    }
+};
 
 export const createTask = async(req:RequestWithUser, res: Response)=>{
     try{
@@ -22,6 +46,27 @@ export const createTask = async(req:RequestWithUser, res: Response)=>{
         });
 
         const {title , payment  , amount } = taskSchema.parse(req.body);
+        const userId = req.user.userId;
+        const user = await prisma.user.findFirst({
+            where:{
+                id: userId
+            }
+        });
+
+        if(!user){
+            return res.status(400).json({
+                message: "User not found",
+                success: false
+            });
+        }
+
+        if(!verifyPayment(user.address , parseFloat(payment) , payment)){
+            return res.status(400).json({
+                message: "Invalid Payment",
+                success: false
+            });
+        }
+        
         
         const images = req.files;
         const imagesArray: string[] = [];
@@ -42,7 +87,7 @@ export const createTask = async(req:RequestWithUser, res: Response)=>{
             });
         }
 
-        const userId = req.user.userId;
+        
 
         if(!title || !payment || !images){
             return res.status(400).json({
