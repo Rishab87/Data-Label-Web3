@@ -5,12 +5,18 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey , Connection } from '@solana/web3.js';
 import { Transaction , SystemProgram } from '@solana/web3.js';
 import { Keypair , LAMPORTS_PER_SOL} from '@solana/web3.js';
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { workerSignin } from '@/apis/apiFunctions/auth';
 import Image from 'next/image';
 import { reviewTask } from '@/apis/apiFunctions/task';
 import toast from 'react-hot-toast';
 import bs58 from 'bs58';
+import dynamic from 'next/dynamic';
+const WalletMultiButton = dynamic(
+  async () =>
+      (await import('@solana/wallet-adapter-react-ui')).WalletMultiButton,
+  { ssr: false }
+);
+
 
 
 const page = () => {
@@ -19,7 +25,7 @@ const page = () => {
     const [pendingTasks , setPendingTasks] = React.useState<any[]>([]);
     const [renderSteps , setRenderSteps] = React.useState<number>(0); 
     const [token , setToken] = React.useState<string | null>(null);
-    const {publicKey , connected , connecting} = useWallet();
+    const {publicKey , connected , connecting , signMessage} = useWallet();
     const [pendingAmount , setPendingAmount] = React.useState<string>("0");
     const [locked  , setLocked] = React.useState<boolean>(false);
 
@@ -35,22 +41,33 @@ const page = () => {
       setLoading(false);
     } , [token]);
 
-    useEffect(()=>{
-      const signin= async()=>{
+    const signin= async()=>{
           if(connected){
-              const workerData = await workerSignin(publicKey?.toBase58());
-              setToken(workerData.token);
-              setLoading(false);
-              setPendingAmount(workerData.pending_amount);
-              console.log(workerData);
+            let signature;
+            const message = "Please sign to sign in";
+            try {
+                const encodedMessage = new TextEncoder().encode(message);
+                signature = await signMessage!(encodedMessage);
+                console.log('Signature:', signature);
+    
+            
+                const workerData = await workerSignin(publicKey?.toBase58() , bs58.encode(signature) , message);
+
+                setToken(workerData.token);
+                setLoading(false);
+                setPendingAmount(workerData.pending_amount);
+                console.log(workerData);
+            } catch (err) {
+                console.error('Error signing message:', err);
+                setLoading(false);  
+            }
+
+  
           }
           else if(connecting){
               setLoading(true);
           }
       }
-
-      signin();
-  } , [connected , connecting]);
 
   //review function , payouts pending
 
@@ -139,8 +156,16 @@ const page = () => {
               )
             }
             <div className='hover:scale-95 transition-all duration-200 w-fit h-fit mr-2'>
+              { token && 
                 <WalletMultiButton style={{color: 'black' , backgroundColor: 'white' }} />
+
+              }
             </div>
+            {
+                !token && (
+                  <button className='hover:scale-95 transition-all duration-200 px-4 py-2 rounded-lg bg-white text-black w-[180px]' onClick={signin}>Connect Wallet</button>
+                )
+              }
             
         </div>
 

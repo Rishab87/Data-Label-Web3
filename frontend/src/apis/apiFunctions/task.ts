@@ -9,6 +9,8 @@ export const createTask = async (formData: object , token: string | null) => {
         console.log(formData);
         
         const response = await apiConnector("POST" , taskEndpoints.createTask  , formData  , {"Authorization": `Bearer ${token}`  ,  "Content-Type": "multipart/form-data"}, {});
+        console.log(response);
+        
         if(!response.data.success){
             throw new Error(response.data.message);
         }
@@ -22,8 +24,11 @@ export const createTask = async (formData: object , token: string | null) => {
         
     } catch(error){
         console.log(error);
+        toast.error("Failed to create task");
     }
     toast.dismiss(toastId);
+
+    return null;
 }
 
 export const getPendingTasks = async (token: string | null) => {

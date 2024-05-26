@@ -3,12 +3,12 @@ import { apiConnector } from "../apiConnector";
 import { authEndpoints } from "../apiEndpoints";
 import toast from "react-hot-toast";
 
-export const userSignin = async (publicKey: string | undefined) => {
+export const userSignin = async (publicKey: string | undefined , signature:string | undefined , message: string) => {
     const toastID = toast.loading("Signing in");
     try{
         // console.log(publicKey);
         
-        const response = await apiConnector( "POST" , authEndpoints.userSignin , {publicKey} , {}  , {});
+        const response = await apiConnector( "POST" , authEndpoints.userSignin , {publicKey , signature , message} , {}  , {});
         toast.success("Signed in successfully");
         toast.dismiss(toastID);
         return response.data.token;
@@ -21,11 +21,11 @@ export const userSignin = async (publicKey: string | undefined) => {
     toast.dismiss(toastID);
 }
 
-export const workerSignin = async (publicKey: string | undefined) => {
+export const workerSignin = async (publicKey: string | undefined , signature: string | undefined  , message: string) => {
     const toastID = toast.loading("Signing in");
     try{
         // console.log(publicKey);
-        const response = await apiConnector( "POST" , authEndpoints.workerSignin , {publicKey} , {}  , {});
+        const response = await apiConnector( "POST" , authEndpoints.workerSignin , {publicKey  ,signature , message} , {}  , {});
 
         toast.success("Signed in successfully");
         toast.dismiss(toastID);

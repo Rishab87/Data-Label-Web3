@@ -1,17 +1,23 @@
 "use client"
-import React, { useEffect, useMemo } from 'react'
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import React, { useEffect } from 'react'
 import { useWallet} from '@solana/wallet-adapter-react';
 import {userSignin} from '../../apis/apiFunctions/auth';
 import { useForm } from "react-hook-form";
 import Image from 'next/image';
 import { createTask } from '@/apis/apiFunctions/task';
 import { PublicKey , Connection } from '@solana/web3.js';
-import { Transaction , SystemProgram } from '@solana/web3.js';
-import { LAMPORTS_PER_SOL} from '@solana/web3.js';
+import { Transaction , SystemProgram , TransactionInstruction } from '@solana/web3.js';
+import { LAMPORTS_PER_SOL , clusterApiUrl} from '@solana/web3.js';
 import toast from 'react-hot-toast';
 import { getTasks } from '@/apis/apiFunctions/task';
 import { renewTask } from '@/apis/apiFunctions/task';
+import bs58 from 'bs58';
+import dynamic from 'next/dynamic';
+const WalletMultiButton = dynamic(
+    async () =>
+        (await import('@solana/wallet-adapter-react-ui')).WalletMultiButton,
+    { ssr: false }
+);
 
 
 const page = () => {
@@ -32,22 +38,30 @@ const page = () => {
             return;
         }
 
-        const { blockhash , lastValidBlockHeight } = await connection.getLatestBlockhash();
-
+       
         const transaction = new Transaction().add(
           SystemProgram.transfer({
             fromPubkey: publicKey,
             toPubkey: new PublicKey("9A6ZjfpuKVgvySvUyW2T6ofTwQt6iSfto5e4bNiAC23B"),
-            lamports: amount !==0?amount: renewAmount * 0.01 * LAMPORTS_PER_SOL, // Convert SOL to lamports
+            lamports: amount !==0?amount: renewAmount * LAMPORTS_PER_SOL, // cahnge from 0.01 to 1
           })
         );
+        console.log(amount * LAMPORTS_PER_SOL);
+        
+        // transaction.feePayer = publicKey;
 
+        const {
+            context: { slot: minContextSlot },
+            value: { blockhash, lastValidBlockHeight }
+        } = await connection.getLatestBlockhashAndContext();
  
         console.log('Sender Public Key:', publicKey);
         console.log('Fee Payer:', transaction.feePayer);
         console.log('Blockhash:', blockhash);
 
-        const signature = await sendTransaction(transaction, connection);
+        const signature = await sendTransaction(transaction, connection , {minContextSlot});
+
+
 
         const confirmation = await connection.confirmTransaction({
             signature,
@@ -85,8 +99,8 @@ const page = () => {
     const [token , setToken] = React.useState<string | null>(null);
     const [images , setImages] = React.useState<any[]>([]);
 
-    const {publicKey , connected , connecting , sendTransaction} = useWallet();
-    const connection = new Connection('https://api.devnet.solana.com');
+    const {publicKey , connected , connecting , sendTransaction , signMessage} = useWallet();
+    const connection = new Connection(clusterApiUrl("devnet"), 'confirmed');
     const [loading , setLoading] = React.useState<boolean>(false);
     const [amount , setAmount] = React.useState<number>(0);
     const [userTasks , setUserTasks] = React.useState<any[]>([]);
@@ -117,24 +131,34 @@ const page = () => {
         fetchTasks();
     } , [token]);
 
-    useEffect(()=>{
-        const signin= async()=>{
+    const signin= async()=>{
             if(connected){
-                const token = await userSignin(publicKey?.toBase58());
-                setToken(token);
-                setLoading(false);
-                console.log(token);
+                let signature;
+                const message = "Please sign to sign in";
+                try {
+                    const encodedMessage = new TextEncoder().encode(message);
+                    signature = await signMessage!(encodedMessage);
+                    console.log('Signature:', signature);
+        
+                    // Verify the signature on the server side
+                    // You can send the publicKey and signature to your backend for verification
+                    const token = await userSignin(publicKey?.toBase58() , bs58.encode(signature) , message);
+                    setToken(token);
+                    setLoading(false);
+                    console.log(token);
+                } catch (err) {
+                    console.error('Error signing message:', err);
+                }
+        
+               
             }
             else if(connecting){
                 setLoading(true);
             }
         }
-
-        signin();
-    } , [connected , connecting]);
-
     const submitHandler = async(data:any)=>{
         console.log(data);
+        setLoading(true);
         if(!connected){
             alert('Please connect wallet');
             setToken(null);
@@ -153,7 +177,8 @@ const page = () => {
             await transferSol();
         } catch(error){
             console.error(error);
-            alert('Airdrop failed');
+            toast.error('Failed to transfer sol');
+            setLoading(false)
             return;
         }
 
@@ -164,7 +189,9 @@ const page = () => {
             taskImage: images
         }
         const task = await createTask(formData , token);
-        setUserTasks([...userTasks , task]);
+        setLoading(false);
+        if(task)
+            setUserTasks([...userTasks , task]);
     }
 
     const renew = async (taskId:number)=>{
@@ -185,8 +212,19 @@ const page = () => {
             <h1 className='font-bold text-2xl ml-auto p-4 w-screen'>Welcome to Labify</h1>
           
             <div className='hover:scale-95 transition-all duration-200 h-fit w-fit mr-4'>
-                <WalletMultiButton style={{color: 'black' , backgroundColor: 'white' }} />
+                {
+                    token && (
+                        <WalletMultiButton style={{color: 'black' , backgroundColor: 'white' }} />
+
+                    )
+                }
+              
             </div>
+            {
+                    !token && (
+                        <button className='hover:scale-95 transition-all duration-200 px-4 py-2 rounded-lg bg-white text-black w-[180px]' onClick={signin}>Connect Wallet</button>
+                    )
+                }
             
         </div>
         
@@ -206,6 +244,13 @@ const page = () => {
                         <label htmlFor="title">Enter Title: (optional)</label>
                         <input type="text" id='title' className='text-black w-full rounded-md p-2' defaultValue={"Select the most suitable thumbnail:"} {...register("title" , {required: true})}/>
                         <input type="file" onChange={(e)=> previewFile(e.target.files)} accept='image/*' multiple/>
+                        {
+                            images.length > 0 && (
+                                <button onClick={(e)=> {setImages([]); 
+                                    e.stopPropagation()}
+                                    } className='hover:scale-95 transition-all duration-200 px-4 py-2 rounded-lg bg-white text-black w-[180px]'>Clear All Images</button>
+                            )
+                        }
 
                     </div>
                     
@@ -213,13 +258,20 @@ const page = () => {
                     <div className='flex gap-2 flex-wrap'>
                         {
                             images.map((image , index)=>(
-                            <Image key={index} src={image.preview} alt={`${index+1}`} width={"300"} height={"169"} className=' object-fit 16:9'/>
+                            <div className='flex gap-2 flex-col'>
+                                <button className=' bg-red-600 h=[50px] w-[50px] rounded-full text-white' onClick={(e)=>{
+                                    const newImages = images.filter((img , i)=> i !== index);
+                                    setImages(newImages);
+                                    e.stopPropagation();
+                                }}>x</button>
+                                <Image key={index} src={image.preview} alt={`${index+1}`} width={"300"} height={"169"} className=' object-fit 16:9'/>
+                            </div>
                             ))
                         }
                     </div>
 
                     {(images.length >1 &&
-                    <button type='submit' className='hover:scale-95 transition-all duration-200 px-4 py-2 rounded-lg bg-white text-black w-[180px]'>Pay {amount} sol & Upload</button>)}
+                    <button type='submit' disabled={loading} className='hover:scale-95 transition-all duration-200 px-4 py-2 rounded-lg bg-white text-black w-[180px]'>Pay {amount} sol & Upload</button>)}
                 </form>
             )
         }

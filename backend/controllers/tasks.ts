@@ -4,9 +4,12 @@ import { uploadImageToCloudinary } from '../utils/imageUploader';
 import dotenv from 'dotenv';
 dotenv.config();
 import {Request , Response} from 'express';
-import { PublicKey } from '@solana/web3.js';
-import bs58 from 'bs58';
-import nacl from 'tweetnacl';
+import { PublicKey , Connection ,clusterApiUrl, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { parse } from 'path';
+
+const connection = new Connection(clusterApiUrl("devnet"), 'confirmed');
+const PARENT_WALLET_ADDRESS = "9A6ZjfpuKVgvySvUyW2T6ofTwQt6iSfto5e4bNiAC23B";   
+
 
 interface RequestWithUser extends Request {
     user?: any;
@@ -14,27 +17,6 @@ interface RequestWithUser extends Request {
 }
 
 //we will give 0.1 sol to each reviewer 
-
-const verifyPayment = (
-    publicKeyBase58: string,
-    amount: number,
-    signatureBase58: string
-): boolean => {
-    try {
-        // Decode public key and signature from base58
-        const publicKey = new PublicKey(publicKeyBase58);
-        const signature = bs58.decode(signatureBase58);
-
-        // Encode the payment data
-        const paymentData = new TextEncoder().encode(`${publicKey.toBase58()}${amount}`);
-
-        // Verify the signature
-        return nacl.sign.detached.verify(paymentData, signature, publicKey.toBytes());
-    } catch (error) {
-        console.error('Error verifying payment:', error);
-        return false;
-    }
-};
 
 export const createTask = async(req:RequestWithUser, res: Response)=>{
     try{
@@ -46,6 +28,8 @@ export const createTask = async(req:RequestWithUser, res: Response)=>{
         });
 
         const {title , payment  , amount } = taskSchema.parse(req.body);
+        console.log(payment);
+        
         const userId = req.user.userId;
         const user = await prisma.user.findFirst({
             where:{
@@ -60,13 +44,31 @@ export const createTask = async(req:RequestWithUser, res: Response)=>{
             });
         }
 
-        if(!verifyPayment(user.address , parseFloat(payment) , payment)){
-            return res.status(400).json({
-                message: "Invalid Payment",
-                success: false
-            });
-        }
+        const transaction = await connection.getTransaction(payment, {
+            maxSupportedTransactionVersion: 1
+        });
+
+        console.log(transaction)
+        console.log(transaction?.meta?.postBalances[1]! - transaction?.meta?.preBalances[1]! , parseFloat(amount)*100);
+        console.log(parseFloat(amount)*100);
         
+        if ((transaction?.meta?.postBalances[1]! - transaction?.meta?.preBalances[1]!) !== (parseFloat(amount)*100)) {
+            return res.status(411).json({
+                message: "Transaction signature/amount incorrect"
+            })
+        }
+
+        if (transaction?.transaction.message.getAccountKeys().get(1)?.toString() !== PARENT_WALLET_ADDRESS) {
+            return res.status(411).json({
+                message: "Transaction sent to wrong address"
+            })
+        }
+    
+        if (transaction?.transaction.message.getAccountKeys().get(0)?.toString() !== user?.address) {
+            return res.status(411).json({
+                message: "Transaction sent to wrong address"
+            })
+        }
         
         const images = req.files;
         const imagesArray: string[] = [];
