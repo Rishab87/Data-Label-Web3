@@ -132,7 +132,6 @@ const page = () => {
     } , [token]);
 
     const signin= async()=>{
-            if(connected){
                 let signature;
                 const message = "Please sign to sign in";
                 try {
@@ -151,10 +150,6 @@ const page = () => {
                 }
         
                
-            }
-            else if(connecting){
-                setLoading(true);
-            }
         }
     const submitHandler = async(data:any)=>{
         console.log(data);
