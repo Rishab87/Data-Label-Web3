@@ -43,10 +43,10 @@ const page = () => {
           SystemProgram.transfer({
             fromPubkey: publicKey,
             toPubkey: new PublicKey("9A6ZjfpuKVgvySvUyW2T6ofTwQt6iSfto5e4bNiAC23B"),
-            lamports: amount !==0?amount: renewAmount * LAMPORTS_PER_SOL, // cahnge from 0.01 to 1
+            lamports: amount !==0?(amount * LAMPORTS_PER_SOL): (renewAmount * LAMPORTS_PER_SOL), // cahnge from 0.01 to 1
           })
         );
-        console.log(amount * LAMPORTS_PER_SOL);
+        console.log(amount);
         
         // transaction.feePayer = publicKey;
 

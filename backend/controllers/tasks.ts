@@ -49,10 +49,10 @@ export const createTask = async(req:RequestWithUser, res: Response)=>{
         });
 
         console.log(transaction)
-        console.log(transaction?.meta?.postBalances[1]! - transaction?.meta?.preBalances[1]! , parseFloat(amount)*100);
+        console.log(transaction?.meta?.postBalances[1]! - transaction?.meta?.preBalances[1]! , parseFloat(amount)*LAMPORTS_PER_SOL);
         console.log(parseFloat(amount)*100);
         
-        if ((transaction?.meta?.postBalances[1]! - transaction?.meta?.preBalances[1]!) !== (parseFloat(amount)*100)) {
+        if ((transaction?.meta?.postBalances[1]! - transaction?.meta?.preBalances[1]!) !== (parseFloat(amount)*LAMPORTS_PER_SOL)) {
             return res.status(411).json({
                 message: "Transaction signature/amount incorrect"
             })
