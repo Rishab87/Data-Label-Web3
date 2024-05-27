@@ -42,7 +42,6 @@ const page = () => {
     } , [token]);
 
     const signin= async()=>{
-          if(connected){
             let signature;
             const message = "Please sign to sign in";
             try {
@@ -61,12 +60,6 @@ const page = () => {
                 console.error('Error signing message:', err);
                 setLoading(false);  
             }
-
-  
-          }
-          else if(connecting){
-              setLoading(true);
-          }
       }
 
   //review function , payouts pending
